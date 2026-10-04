@@ -93,6 +93,9 @@ func (s *controllerCmd) setupFlags() error {
 	}
 
 	s.ingressControllerOpts.setupFlags(flags)
+	if err := bindSecretWatchNamespaces(flags); err != nil {
+		return err
+	}
 	return viperWalk(flags)
 }
 
@@ -154,8 +157,13 @@ func (s *controllerCmd) buildController(ctx context.Context) (*controllers.Contr
 		return nil, err
 	}
 
+	secretCache, err := secretCacheOptions(s.SecretWatchNamespaces)
+	if err != nil {
+		return nil, err
+	}
 	c := &controllers.Controller{
 		MgrOpts: ctrl.Options{
+			Cache:   secretCache,
 			Scheme:  scheme,
 			Metrics: metricsserver.Options{BindAddress: s.metricsAddr},
 			Controller: config.Controller{
