@@ -67,6 +67,7 @@ type allCmdOptions struct {
 
 type allCmdParam struct {
 	settings                types.NamespacedName
+	secretWatchNamespaces   []string
 	ingressOpts             []ingress.Option
 	gatewayConfig           *gateway.ControllerConfig
 	updateStatusFromService string
@@ -157,6 +158,9 @@ func (s *allCmd) setupFlags() error {
 	}
 
 	s.ingressControllerOpts.setupFlags(flags)
+	if err := bindSecretWatchNamespaces(flags); err != nil {
+		return err
+	}
 	s.CertificateControllerOptions.setupFlags(flags)
 	s.DataBrokerOptions.setupFlags(flags)
 	return viperWalk(flags)
@@ -205,6 +209,7 @@ func (s *allCmdOptions) getParam(ctx context.Context) (*allCmdParam, error) {
 
 	p := &allCmdParam{
 		settings:                        *settings,
+		secretWatchNamespaces:           s.SecretWatchNamespaces,
 		ingressOpts:                     opts,
 		gatewayConfig:                   gatewayConfig,
 		updateStatusFromService:         s.UpdateStatusFromService,
@@ -440,10 +445,15 @@ func (s *allCmdParam) buildController(ctx context.Context, cfg *config.Config) (
 	} else {
 		reconciler = pomerium.NewDataBrokerReconciler(client, s.dumpConfigDiff)
 	}
+	secretCache, err := secretCacheOptions(s.secretWatchNamespaces)
+	if err != nil {
+		return nil, err
+	}
 	c := &controllers.Controller{
 		Reconciler:              reconciler,
 		DataBrokerServiceClient: client,
 		MgrOpts: runtime_ctrl.Options{
+			Cache:  secretCache,
 			Scheme: scheme,
 			Metrics: metricsserver.Options{
 				BindAddress: s.ingressMetricsAddr,
@@ -474,7 +484,12 @@ func (s *allCmdParam) runBootstrapConfigController(ctx context.Context, reconcil
 		return fmt.Errorf("get k8s api config: %w", err)
 	}
 
+	secretCache, err := secretCacheOptions(s.secretWatchNamespaces)
+	if err != nil {
+		return err
+	}
 	mgr, err := runtime_ctrl.NewManager(cfg, runtime_ctrl.Options{
+		Cache:          secretCache,
 		Scheme:         scheme,
 		Metrics:        metricsserver.Options{BindAddress: s.bootstrapMetricsAddr},
 		LeaderElection: false,
