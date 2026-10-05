@@ -93,3 +93,39 @@ func TestSecretCacheOptionsIndependent(t *testing.T) {
 		require.Contains(t, cfg.Namespaces, "pomerium")
 	}
 }
+
+func TestSecretWatchAllowlistFlags(t *testing.T) {
+	for _, tc := range []struct {
+		name, env string
+		cli       []string
+		invalid   bool
+		want      []string
+	}{
+		{"environment", "pomerium/bootstrap", nil, false, []string{"pomerium/bootstrap"}},
+		{"CLI override", "pomerium/bootstrap", []string{"--secret-watch-allowlist=pomerium/idp"}, false, []string{"pomerium/idp"}},
+		{"empty environment", "", nil, true, nil},
+		{"empty CLI", "pomerium/bootstrap", []string{"--secret-watch-allowlist="}, true, nil},
+		{"outside namespace", "other/bootstrap", nil, true, nil},
+		{"wildcard", "pomerium/*", nil, true, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(secretWatchAllowlistEnv, tc.env)
+			flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+			var entries []string
+			flags.StringSliceVar(&entries, secretWatchAllowlist, nil, "Secret allowlist")
+			require.NoError(t, flags.Parse(tc.cli))
+			require.NoError(t, bindSecretWatchAllowlist(flags))
+			factory, err := secretCacheFactory([]string{"pomerium"}, entries)
+			if tc.invalid {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, factory)
+				require.Equal(t, tc.want, entries)
+			}
+		})
+	}
+	factory, err := secretCacheFactory(nil, nil)
+	require.NoError(t, err)
+	require.Nil(t, factory)
+}
