@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pomerium/ingress-controller/util/secretcache"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -49,4 +50,28 @@ func secretCacheOptions(namespaces []string) (cache.Options, error) {
 	return cache.Options{ByObject: map[client.Object]cache.ByObject{
 		&corev1.Secret{}: {Namespaces: scope},
 	}}, nil
+}
+
+const secretWatchAllowlist = "secret-watch-allowlist"
+const secretWatchAllowlistEnv = "SECRET_WATCH_ALLOWLIST"
+
+func bindSecretWatchAllowlist(flags *pflag.FlagSet) error {
+	if value, present := os.LookupEnv(secretWatchAllowlistEnv); present && !flags.Changed(secretWatchAllowlist) {
+		entries := []string{}
+		if value != "" {
+			entries = strings.Split(value, ",")
+		}
+		return flags.Lookup(secretWatchAllowlist).Value.(pflag.SliceValue).Replace(entries)
+	}
+	return nil
+}
+func secretCacheFactory(namespaces, allowlist []string) (cache.NewCacheFunc, error) {
+	names, err := secretcache.Parse(allowlist, namespaces)
+	if err != nil {
+		return nil, err
+	}
+	if names == nil {
+		return nil, nil
+	}
+	return secretcache.Factory(names), nil
 }

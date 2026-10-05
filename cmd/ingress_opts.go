@@ -20,6 +20,7 @@ type ingressControllerOpts struct {
 	AnnotationPrefix        string `validate:"required"`
 	Namespaces              []string
 	SecretWatchNamespaces   []string
+	SecretWatchAllowlist    []string
 	UpdateStatusFromService string ``
 	GlobalSettings          string `validate:"required"`
 	SyncAPIURL              string
@@ -49,6 +50,7 @@ func (s *ingressControllerOpts) setupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&s.AnnotationPrefix, annotationPrefix, ingress.DefaultAnnotationPrefix, "Ingress annotation prefix")
 	flags.StringSliceVar(&s.Namespaces, namespaces, nil, "namespaces to watch, or none to watch all namespaces")
 	flags.StringSliceVar(&s.SecretWatchNamespaces, secretWatchNamespaces, nil, "namespaces in which to list, watch and cache Secrets; omitted means all namespaces; requires matching RBAC")
+	flags.StringSliceVar(&s.SecretWatchAllowlist, secretWatchAllowlist, nil, "exact namespace/name Secret cache allowlist; requires matching resourceNames RBAC")
 	flags.StringVar(&s.UpdateStatusFromService, updateStatusFromService, "", "update ingress status from given service status (pomerium-proxy)")
 	flags.StringVar(&s.GlobalSettings, globalSettings, "",
 		fmt.Sprintf("namespace/name to a resource of type %s/Settings", icsv1.GroupVersion.Group))
@@ -75,6 +77,9 @@ func (s *ingressControllerOpts) getGlobalSettings() (*types.NamespacedName, erro
 
 func (s *ingressControllerOpts) getIngressControllerOptions() ([]ingress.Option, error) {
 	if _, err := secretCacheOptions(s.SecretWatchNamespaces); err != nil {
+		return nil, err
+	}
+	if _, err := secretCacheFactory(s.SecretWatchNamespaces, s.SecretWatchAllowlist); err != nil {
 		return nil, err
 	}
 	opts := []ingress.Option{

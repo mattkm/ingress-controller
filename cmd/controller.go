@@ -96,6 +96,9 @@ func (s *controllerCmd) setupFlags() error {
 	if err := bindSecretWatchNamespaces(flags); err != nil {
 		return err
 	}
+	if err := bindSecretWatchAllowlist(flags); err != nil {
+		return err
+	}
 	return viperWalk(flags)
 }
 
@@ -161,11 +164,16 @@ func (s *controllerCmd) buildController(ctx context.Context) (*controllers.Contr
 	if err != nil {
 		return nil, err
 	}
+	factory, err := secretCacheFactory(s.SecretWatchNamespaces, s.SecretWatchAllowlist)
+	if err != nil {
+		return nil, err
+	}
 	c := &controllers.Controller{
 		MgrOpts: ctrl.Options{
-			Cache:   secretCache,
-			Scheme:  scheme,
-			Metrics: metricsserver.Options{BindAddress: s.metricsAddr},
+			Cache:    secretCache,
+			NewCache: factory,
+			Scheme:   scheme,
+			Metrics:  metricsserver.Options{BindAddress: s.metricsAddr},
 			Controller: config.Controller{
 				SkipNameValidation: new(true),
 			},

@@ -78,7 +78,7 @@ func viperWalk(flags *pflag.FlagSet) error {
 	var errs *multierror.Error
 	flags.VisitAll(func(f *pflag.Flag) {
 		// Bound explicitly to preserve empty-value rejection and CLI replacement.
-		if f.Name == secretWatchNamespaces {
+		if f.Name == secretWatchNamespaces || f.Name == secretWatchAllowlist {
 			return
 		}
 		if err := v.BindEnv(f.Name, envName(f.Name)); err != nil {
