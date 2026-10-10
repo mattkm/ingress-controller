@@ -8,3 +8,4 @@ Use Pomerium as a first-class secure-by-default Ingress Controller. The Pomerium
 - [Global Configuration](https://www.pomerium.com/docs/k8s/configure).
 - [Ingress Configuration](https://www.pomerium.com/docs/k8s/ingress).
 - [Pomerium CRD Reference](https://www.pomerium.com/docs/k8s/reference).
+- [All-in-one sign-out redirect](docs/all-in-one-signout-redirect.md).
