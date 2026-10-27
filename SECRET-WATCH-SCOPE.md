@@ -1,6 +1,6 @@
 # Optional Secret namespace scope
 
-This branch is based on upstream v0.33.5. It adds:
+This branch is based on upstream v0.33.6. It adds:
 
 ```
 --secret-watch-namespaces=default,keycloak,pomerium
@@ -24,7 +24,7 @@ permissions. Never silently widen scope to satisfy a configuration reference.
 Build an ARM64 candidate locally from this checkout:
 
 ```
-docker buildx build --platform linux/arm64 --load -f Dockerfile.secret-scope -t iad.ocir.io/idktjivvhhey/pomerium-ingress-oci:v0.33.5-secret-scope.1 .
+docker buildx build --platform linux/arm64 --load -f Dockerfile.secret-scope -t iad.ocir.io/idktjivvhhey/pomerium-ingress-oci:v0.33.6-secret-scope.1 .
 ```
 
 The build runs targeted tests before compiling. Image publication and deployment
