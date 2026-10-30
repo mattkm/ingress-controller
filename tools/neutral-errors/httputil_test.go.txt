@@ -1,0 +1,30 @@
+package httputil
+
+import (
+    "context"
+    "errors"
+    "net/http/httptest"
+    "net/url"
+    "strings"
+    "testing"
+)
+
+func TestNeutralStructuredHTTPError(t *testing.T) {
+    for _, status := range []int{400,401,403,429,500,502,503,504} {
+        req := httptest.NewRequest("GET","https://public.invalid/",nil)
+        req.Header.Set("Accept","application/json")
+        w := httptest.NewRecorder()
+        e := NewError(status,errors.New("PRIVATE_CONNECTION_DETAIL")).WithDescription("PRIVATE_DESCRIPTION")
+        e.RequestID = "reference-id"
+        e.DebugURL,_ = url.Parse("https://private.invalid/debug?token=PRIVATE_VALUE")
+        e.ErrorResponse(context.Background(),w,req)
+        if w.Code != status { t.Fatal("HTTP status changed") }
+        body := w.Body.String()
+        for _, forbidden := range []string{"PRIVATE_","private.invalid","DebugURL","PolicyEvaluationTraces"} {
+            if strings.Contains(body,forbidden) { t.Fatalf("public response contains %q",forbidden) }
+        }
+        if !strings.Contains(body,"Request could not be completed.") || !strings.Contains(body,"reference-id") { t.Fatal("safe error summary or correlation reference lost") }
+        if w.Result().Header.Get("Cache-Control") != "no-store" { t.Fatal("error response cacheable") }
+        if !strings.Contains(e.Error(),"PRIVATE_CONNECTION_DETAIL") { t.Fatal("private original error was changed") }
+    }
+}
